@@ -12,16 +12,27 @@ def find_value(pattern, text):
 
 
 def extract_bill_to_block(text):
-    patterns = [
-        r"BILL TO\s+(.*?)\s+INVOICE\s+#",
-        r"BILL TO\s+(.*?)\s+INVOICE #",
-        r"BILL TO\s+(.*?)\s+DATE\s+\d{2}/\d{2}/\d{4}",
-    ]
+    lines = [line.strip() for line in text.splitlines()]
 
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
+    for i, line in enumerate(lines):
+        if line.upper() == "BILL TO":
+            bill_to_lines = []
+
+            for next_line in lines[i + 1:]:
+                upper_line = next_line.upper().strip()
+
+                if (
+                    upper_line.startswith("INVOICE #")
+                    or upper_line.startswith("DATE ")
+                    or upper_line.startswith("DUE DATE")
+                    or upper_line.startswith("TERMS")
+                ):
+                    break
+
+                if next_line.strip():
+                    bill_to_lines.append(next_line.strip())
+
+            return "\n".join(bill_to_lines) if bill_to_lines else "Not found"
 
     return "Not found"
 
