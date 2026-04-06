@@ -23,13 +23,16 @@ def extract_bill_to_block(text):
     if match:
         block = match.group(1)
 
-        # Clean out junk labels
+        # Remove full label chunks BEFORE splitting
         block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
 
-        # Re-split into readable lines
-        parts = block.split("  ")
+        # Remove any trailing fragments like "Court DUE"
+        block = re.sub(r"\s+DUE\b", "", block)
+
+        # Normalize spacing → turn into lines
+        parts = re.split(r"\s{2,}|\n", block)
         cleaned = "\n".join([p.strip() for p in parts if p.strip()])
 
         return cleaned
