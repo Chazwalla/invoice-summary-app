@@ -1,3 +1,5 @@
+from reportlab.platypus import Image
+
 import re
 import io
 import zipfile
@@ -187,7 +189,11 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
 
     story = []
 
+     logo = Image("TaurusLogo.png", width=1.5 * inch, height=0.6 * inch)
+
     company_block = [
+        logo,
+        Spacer(1, 6),
         Paragraph("Taurus Biogas LLC", company_style),
         Paragraph("2175 NW Raleigh St. Suite 110", company_style),
         Paragraph("Portland, OR 97210 USA", company_style),
