@@ -12,22 +12,27 @@ def find_value(pattern, text):
 
 
 def extract_bill_to_block(text):
-    normalized = text.replace("\r", "\n")
-    normalized = re.sub(r"[ \t]+", " ", normalized)
+    normalized = text.replace("\r", " ")
 
-    patterns = [
-        r"BILL TO\s*(.*?)\s*INVOICE\s*#",
-        r"BILL TO\s*(.*?)\s*DATE\s+\d{2}/\d{2}/\d{4}",
-        r"BILL TO\s*(.*?)\s*DUE DATE\s+\d{2}/\d{2}/\d{4}",
-        r"BILL TO\s*(.*?)\s*TERMS\s+",
-    ]
+    match = re.search(
+        r"BILL TO INVOICE\s+#\s*\d+\s+(.*?)\s+DATE DESCRIPTION AMOUNT",
+        normalized,
+        re.DOTALL | re.IGNORECASE
+    )
 
-    for pattern in patterns:
-        match = re.search(pattern, normalized, re.DOTALL | re.IGNORECASE)
-        if match:
-            block = match.group(1).strip()
-            block = re.sub(r"\s{2,}", "\n", block)
-            return block if block else "Not found"
+    if match:
+        block = match.group(1)
+
+        # Clean out junk labels
+        block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
+        block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
+        block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
+
+        # Re-split into readable lines
+        parts = block.split("  ")
+        cleaned = "\n".join([p.strip() for p in parts if p.strip()])
+
+        return cleaned
 
     return "Not found"
 
