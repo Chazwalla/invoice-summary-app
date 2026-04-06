@@ -12,30 +12,18 @@ def find_value(pattern, text):
 
 
 def extract_bill_to_block(text):
-    lines = [line.strip() for line in text.splitlines()]
+    text = text.replace("\r", "")
 
-    for i, line in enumerate(lines):
-        if line.upper() == "BILL TO":
-            bill_to_lines = []
+    match = re.search(
+        r"BILL TO\s*\n(.*?)\nINVOICE\s*#",
+        text,
+        re.DOTALL | re.IGNORECASE
+    )
 
-            for next_line in lines[i + 1:]:
-                upper_line = next_line.upper().strip()
-
-                if (
-                    upper_line.startswith("INVOICE #")
-                    or upper_line.startswith("DATE ")
-                    or upper_line.startswith("DUE DATE")
-                    or upper_line.startswith("TERMS")
-                ):
-                    break
-
-                if next_line.strip():
-                    bill_to_lines.append(next_line.strip())
-
-            return "\n".join(bill_to_lines) if bill_to_lines else "Not found"
+    if match:
+        return match.group(1).strip()
 
     return "Not found"
-
 
 st.title("Invoice Summary Tool")
 
