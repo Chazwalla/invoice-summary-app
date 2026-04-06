@@ -7,6 +7,20 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
 
+CLIENT_NAME_MAP = {
+    "Ash Grove Renewable Energy": "Ash Grove",
+    "Ash Grove Renewable Energy LLC": "Ash Grove",
+    "Drumgoon": "Drumgoon",
+    "Marshall Ridge Renewable Energy": "Marshall Ridge",
+    "Marshall Ridge Renewable Energy LLC": "Marshall Ridge",
+    "VF Renewable": "VF Renewable",
+    "VF Renewables": "VF Renewable",
+    "Tri-Cross": "Tri-Cross",
+    "Tri-Cross Renewables": "Tri-Cross",
+    "East Valley Development": "TB-EVC",
+}
+
+
 def find_value(pattern, text):
     match = re.search(pattern, text, re.MULTILINE)
     return match.group(1).strip() if match else "Not found"
@@ -23,6 +37,7 @@ def extract_bill_to_block(text):
 
     if match:
         block = match.group(1)
+
         block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
@@ -34,6 +49,33 @@ def extract_bill_to_block(text):
         return cleaned if cleaned else "Not found"
 
     return "Not found"
+
+
+def get_client_short_name(bill_to):
+    first_line = bill_to.split("\n")[0].strip() if bill_to != "Not found" else "Unknown Client"
+
+    for key, short_name in CLIENT_NAME_MAP.items():
+        if key.lower() in first_line.lower():
+            return short_name
+
+    cleaned = re.sub(r"\b(LLC|L\.L\.C\.|INC|CORP|CORPORATION|LTD)\b", "", first_line, flags=re.IGNORECASE)
+    cleaned = cleaned.replace(",", "").strip()
+    return cleaned
+
+
+def format_invoice_month(invoice_date):
+    date_match = re.search(r"(\d{2})/(\d{2})/(\d{4})", invoice_date)
+    if date_match:
+        month = date_match.group(1)
+        year = date_match.group(3)
+        return f"{month}-{year}"
+    return "unknown-date"
+
+
+def build_output_filename(bill_to, invoice_date, invoice_number):
+    client_name = get_client_short_name(bill_to)
+    invoice_month = format_invoice_month(invoice_date)
+    return f"{client_name} {invoice_month} Invoice #{invoice_number}.pdf"
 
 
 def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal, tax, total, balance_due):
@@ -78,8 +120,6 @@ if uploaded_files:
     summary_files = []
 
     for file in uploaded_files:
-        st.subheader(file.name)
-
         with pdfplumber.open(file) as pdf:
             full_text = ""
             for page in pdf.pages:
@@ -88,23 +128,16 @@ if uploaded_files:
                     full_text += page_text + "\n"
 
         invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
-        invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        invoice_date = find_value(r"DUE DATE\s+\d{2}/\d{2}/\d{4}.*?\bDATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        if invoice_date == "Not found":
+            invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+
         due_date = find_value(r"DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
         subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
         tax = find_value(r"TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
         total = find_value(r"TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
         balance_due = find_value(r"BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
         bill_to = extract_bill_to_block(full_text)
-
-        st.write("**Invoice #**", invoice_number)
-        st.write("**Invoice Date**", invoice_date)
-        st.write("**Due Date**", due_date)
-        st.write("**Bill To**")
-        st.text(bill_to)
-        st.write("**Subtotal**", subtotal)
-        st.write("**Tax**", tax)
-        st.write("**Total**", total)
-        st.write("**Balance Due**", balance_due)
 
         pdf_bytes = build_summary_pdf(
             invoice_number=invoice_number,
@@ -117,11 +150,18 @@ if uploaded_files:
             balance_due=balance_due
         )
 
-        output_name = f"summary_{file.name}"
+        output_name = build_output_filename(
+            bill_to=bill_to,
+            invoice_date=invoice_date,
+            invoice_number=invoice_number
+        )
+
         summary_files.append((output_name, pdf_bytes))
 
+        st.write(f"**Ready:** {output_name}")
+
         st.download_button(
-            label=f"Download Summary PDF - {file.name}",
+            label=f"Download {output_name}",
             data=pdf_bytes,
             file_name=output_name,
             mime="application/pdf"
