@@ -23,14 +23,11 @@ def extract_bill_to_block(text):
 
     if match:
         block = match.group(1)
-
-        # Remove embedded labels/dates that got mashed into the Bill To block
         block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
         block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
         block = re.sub(r"\s+DUE\b", "", block)
 
-        # Turn the block back into readable lines
         parts = re.split(r"\s{2,}|\n", block)
         cleaned = "\n".join([p.strip() for p in parts if p.strip()])
 
@@ -59,8 +56,6 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
     content.append(Paragraph(bill_to.replace("\n", "<br/>"), styles["Normal"]))
     content.append(Spacer(1, 12))
 
-    content.append(Paragraph("<b>Operating Expenses</b>", styles["Heading3"]))
-    content.append(Spacer(1, 8))
     content.append(Paragraph(f"Subtotal: {subtotal}", styles["Normal"]))
     content.append(Paragraph(f"Tax: {tax}", styles["Normal"]))
     content.append(Paragraph(f"Total: {total}", styles["Normal"]))
@@ -68,7 +63,7 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
 
     doc.build(content)
     buffer.seek(0)
-    return buffer
+    return buffer.getvalue()
 
 
 st.title("Invoice Summary Tool")
@@ -80,70 +75,70 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    zip_buffer = io.BytesIO()
+    summary_files = []
 
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file in uploaded_files:
-            st.subheader(file.name)
+    for file in uploaded_files:
+        st.subheader(file.name)
 
-            with pdfplumber.open(file) as pdf:
-                full_text = ""
-                first_page_text = ""
+        with pdfplumber.open(file) as pdf:
+            full_text = ""
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    full_text += page_text + "\n"
 
-                for i, page in enumerate(pdf.pages):
-                    page_text = page.extract_text()
-                    if page_text:
-                        full_text += page_text + "\n"
-                        if i == 0:
-                            first_page_text = page_text
+        invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
+        invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        due_date = find_value(r"DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
+        tax = find_value(r"TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
+        total = find_value(r"TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
+        balance_due = find_value(r"BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
+        bill_to = extract_bill_to_block(full_text)
 
-            invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
-            invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
-            due_date = find_value(r"DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
-            subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
-            tax = find_value(r"TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
-            total = find_value(r"TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
-            balance_due = find_value(r"BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
-            bill_to = extract_bill_to_block(full_text)
+        st.write("**Invoice #**", invoice_number)
+        st.write("**Invoice Date**", invoice_date)
+        st.write("**Due Date**", due_date)
+        st.write("**Bill To**")
+        st.text(bill_to)
+        st.write("**Subtotal**", subtotal)
+        st.write("**Tax**", tax)
+        st.write("**Total**", total)
+        st.write("**Balance Due**", balance_due)
 
-            st.write("**Invoice #**", invoice_number)
-            st.write("**Invoice Date**", invoice_date)
-            st.write("**Due Date**", due_date)
-            st.write("**Bill To**")
-            st.text(bill_to)
-            st.write("**Subtotal**", subtotal)
-            st.write("**Tax**", tax)
-            st.write("**Total**", total)
-            st.write("**Balance Due**", balance_due)
+        pdf_bytes = build_summary_pdf(
+            invoice_number=invoice_number,
+            invoice_date=invoice_date,
+            due_date=due_date,
+            bill_to=bill_to,
+            subtotal=subtotal,
+            tax=tax,
+            total=total,
+            balance_due=balance_due
+        )
 
-            with st.expander(f"Debug: First page extracted text - {file.name}"):
-                st.text(first_page_text)
+        output_name = f"summary_{file.name}"
+        summary_files.append((output_name, pdf_bytes))
 
-            pdf_buffer = build_summary_pdf(
-                invoice_number=invoice_number,
-                invoice_date=invoice_date,
-                due_date=due_date,
-                bill_to=bill_to,
-                subtotal=subtotal,
-                tax=tax,
-                total=total,
-                balance_due=balance_due
-            )
+        st.download_button(
+            label=f"Download Summary PDF - {file.name}",
+            data=pdf_bytes,
+            file_name=output_name,
+            mime="application/pdf"
+        )
 
-            zip_file.writestr(f"summary_{file.name}", pdf_buffer.getvalue())
+    if summary_files:
+        zip_buffer = io.BytesIO()
 
-            st.download_button(
-                label=f"Download Summary PDF - {file.name}",
-                data=pdf_buffer.getvalue(),
-                file_name=f"summary_{file.name}",
-                mime="application/pdf"
-            )
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for output_name, pdf_bytes in summary_files:
+                zip_file.writestr(output_name, pdf_bytes)
 
-    zip_buffer.seek(0)
+        zip_buffer.seek(0)
 
-    st.download_button(
-        label="Download All Summaries (ZIP)",
-        data=zip_buffer.getvalue(),
-        file_name="invoice_summaries.zip",
-        mime="application/zip"
-    )
+        st.download_button(
+            label="Download All Summaries (ZIP)",
+            data=zip_buffer.getvalue(),
+            file_name="invoice_summaries.zip",
+            mime="application/zip"
+        )
