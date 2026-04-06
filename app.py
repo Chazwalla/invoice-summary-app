@@ -12,18 +12,25 @@ def find_value(pattern, text):
 
 
 def extract_bill_to_block(text):
-    text = text.replace("\r", "")
+    normalized = text.replace("\r", "\n")
+    normalized = re.sub(r"[ \t]+", " ", normalized)
 
-    match = re.search(
-        r"BILL TO\s*\n(.*?)\nINVOICE\s*#",
-        text,
-        re.DOTALL | re.IGNORECASE
-    )
+    patterns = [
+        r"BILL TO\s*(.*?)\s*INVOICE\s*#",
+        r"BILL TO\s*(.*?)\s*DATE\s+\d{2}/\d{2}/\d{4}",
+        r"BILL TO\s*(.*?)\s*DUE DATE\s+\d{2}/\d{2}/\d{4}",
+        r"BILL TO\s*(.*?)\s*TERMS\s+",
+    ]
 
-    if match:
-        return match.group(1).strip()
+    for pattern in patterns:
+        match = re.search(pattern, normalized, re.DOTALL | re.IGNORECASE)
+        if match:
+            block = match.group(1).strip()
+            block = re.sub(r"\s{2,}", "\n", block)
+            return block if block else "Not found"
 
     return "Not found"
+
 
 st.title("Invoice Summary Tool")
 
@@ -39,10 +46,14 @@ if uploaded_files:
 
         with pdfplumber.open(file) as pdf:
             full_text = ""
-            for page in pdf.pages:
+            first_page_text = ""
+
+            for i, page in enumerate(pdf.pages):
                 page_text = page.extract_text()
                 if page_text:
                     full_text += page_text + "\n"
+                    if i == 0:
+                        first_page_text = page_text
 
         invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
         invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
@@ -63,12 +74,14 @@ if uploaded_files:
         st.write("**Total**", total)
         st.write("**Balance Due**", balance_due)
 
+        with st.expander("Debug: First page extracted text"):
+            st.text(first_page_text)
+
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer)
         styles = getSampleStyleSheet()
 
         content = []
-
         content.append(Paragraph("Taurus Biogas LLC", styles["Title"]))
         content.append(Paragraph("INVOICE SUMMARY", styles["Heading2"]))
         content.append(Spacer(1, 12))
