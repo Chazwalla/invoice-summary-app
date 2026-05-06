@@ -50,7 +50,6 @@ def extract_bill_to_block(text):
         match = re.search(pattern, normalized, re.DOTALL | re.IGNORECASE)
         if match:
             block = match.group(1)
-
             block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
             block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
             block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
@@ -58,7 +57,6 @@ def extract_bill_to_block(text):
 
             parts = re.split(r"\s{2,}|\n", block)
             cleaned = "\n".join([p.strip() for p in parts if p.strip()])
-
             return cleaned if cleaned else "Not found"
 
     return "Not found"
@@ -124,81 +122,15 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
 
     styles = getSampleStyleSheet()
 
-    company_style = ParagraphStyle(
-        "CompanyStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=13,
-    )
-
-    label_style = ParagraphStyle(
-        "LabelStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=10,
-        leading=12,
-    )
-
-    value_style = ParagraphStyle(
-        "ValueStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=12,
-    )
-
-    invoice_title_style = ParagraphStyle(
-        "InvoiceTitleStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=22,
-        leading=24,
-        alignment=2,
-    )
-
-    section_label_style = ParagraphStyle(
-        "SectionLabelStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=10,
-        leading=12,
-    )
-
-    bill_to_style = ParagraphStyle(
-        "BillToStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=13,
-    )
-
-    totals_label_style = ParagraphStyle(
-        "TotalsLabelStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=12,
-        alignment=2,
-    )
-
-    totals_value_style = ParagraphStyle(
-        "TotalsValueStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=10,
-        leading=12,
-        alignment=2,
-    )
-
-    totals_bold_style = ParagraphStyle(
-        "TotalsBoldStyle",
-        parent=styles["Normal"],
-        fontName="Helvetica-Bold",
-        fontSize=10,
-        leading=12,
-        alignment=2,
-    )
+    company_style = ParagraphStyle("CompanyStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=13)
+    label_style = ParagraphStyle("LabelStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=12)
+    value_style = ParagraphStyle("ValueStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=12)
+    invoice_title_style = ParagraphStyle("InvoiceTitleStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=22, leading=24, alignment=2)
+    section_label_style = ParagraphStyle("SectionLabelStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=12)
+    bill_to_style = ParagraphStyle("BillToStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=13)
+    totals_label_style = ParagraphStyle("TotalsLabelStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=12, alignment=2)
+    totals_value_style = ParagraphStyle("TotalsValueStyle", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=12, alignment=2)
+    totals_bold_style = ParagraphStyle("TotalsBoldStyle", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=10, leading=12, alignment=2)
 
     story = []
 
@@ -214,43 +146,17 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
         Paragraph("www.taurusbiogas.com", company_style),
     ]
 
-    invoice_info_table = Table(
-        [
-            [Paragraph("INVOICE #", label_style), Paragraph(str(invoice_number), value_style)],
-            [Paragraph("DATE", label_style), Paragraph(invoice_date, value_style)],
-            [Paragraph("DUE DATE", label_style), Paragraph(due_date, value_style)],
-            [Paragraph("TERMS", label_style), Paragraph("Net 30", value_style)],
-        ],
-        colWidths=[1.0 * inch, 1.35 * inch],
-        style=TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 1),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ])
-    )
-
-    right_header = [
-        Paragraph("INVOICE", invoice_title_style),
-        Spacer(1, 14),
-        invoice_info_table,
-    ]
-
-    header_table = Table(
-        [[company_block, right_header]],
+    story.append(Table(
+        [[company_block, Paragraph("INVOICE", invoice_title_style)]],
         colWidths=[3.7 * inch, 2.7 * inch],
         style=TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
         ])
-    )
+    ))
 
-    story.append(header_table)
-    story.append(Spacer(1, 0.22 * inch))
+    story.append(Spacer(1, 0.25 * inch))
 
     bill_to_lines = [line.strip() for line in bill_to.split("\n") if line.strip()]
     if not bill_to_lines:
@@ -268,15 +174,37 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
         ])
     )
 
-    story.append(bill_to_table)
+    invoice_info_table = Table(
+        [
+            [Paragraph("INVOICE #", label_style), Paragraph(str(invoice_number), value_style)],
+            [Paragraph("DATE", label_style), Paragraph(invoice_date, value_style)],
+            [Paragraph("DUE DATE", label_style), Paragraph(due_date, value_style)],
+            [Paragraph("TERMS", label_style), Paragraph("Net 30", value_style)],
+        ],
+        colWidths=[1.0 * inch, 1.35 * inch],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ])
+    )
+
+    story.append(Table(
+        [[bill_to_table, invoice_info_table]],
+        colWidths=[3.7 * inch, 2.7 * inch],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ])
+    ))
 
     totals_rows = []
 
     if money_is_nonzero(tax):
-        totals_rows.append([
-            Paragraph("SUBTOTAL", totals_label_style),
-            Paragraph(subtotal, totals_value_style),
-        ])
+        totals_rows.append([Paragraph("SUBTOTAL", totals_label_style), Paragraph(subtotal, totals_value_style)])
 
     totals_rows.extend([
         [Paragraph("TAX", totals_label_style), Paragraph(tax, totals_value_style)],
@@ -298,7 +226,7 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
         ])
     )
 
-    story.append(Spacer(1, 2.45 * inch))
+    story.append(Spacer(1, 2.65 * inch))
     story.append(totals_table)
 
     doc.build(story)
@@ -326,12 +254,12 @@ if uploaded_files:
                     full_text += page_text + "\n"
 
         invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
-        invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
-        due_date = find_value(r"DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        invoice_date = find_value(r"^DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        due_date = find_value(r"^DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
         subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
-        tax = find_value(r"TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
-        total = find_value(r"TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
-        balance_due = find_value(r"BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
+        tax = find_value(r"^TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
+        total = find_value(r"^TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
+        balance_due = find_value(r"^BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
         bill_to = extract_bill_to_block(full_text)
 
         pdf_bytes = build_summary_pdf(
