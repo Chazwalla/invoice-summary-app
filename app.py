@@ -189,7 +189,7 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
 
     story = []
 
-     logo = Image("TaurusLogo.png", width=1.5 * inch, height=0.6 * inch)
+    logo = Image("TaurusLogo.png", width=1.5 * inch, height=0.6 * inch)
 
     company_block = [
         logo,
