@@ -1,5 +1,3 @@
-from reportlab.platypus import Image
-
 import re
 import io
 import zipfile
@@ -16,6 +14,7 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
+    Image,
 )
 
 
@@ -23,6 +22,7 @@ CLIENT_NAME_MAP = {
     "Ash Grove Renewable Energy": "Ash Grove",
     "Ash Grove Renewable Energy LLC": "Ash Grove",
     "Drumgoon": "Drumgoon",
+    "Drumgoon Digester Renewable Energy": "Drumgoon",
     "Marshall Ridge Renewable Energy": "Marshall Ridge",
     "Marshall Ridge Renewable Energy LLC": "Marshall Ridge",
     "VF Renewable": "VF Renewable",
@@ -34,29 +34,32 @@ CLIENT_NAME_MAP = {
 
 
 def find_value(pattern, text):
-    match = re.search(pattern, text, re.MULTILINE)
+    match = re.search(pattern, text, re.MULTILINE | re.DOTALL)
     return match.group(1).strip() if match else "Not found"
 
 
 def extract_bill_to_block(text):
     normalized = text.replace("\r", " ")
 
-    match = re.search(
+    patterns = [
+        r"BILL TO\s+(.*?)\s+INVOICE\s+#",
         r"BILL TO INVOICE\s+#\s*\d+\s+(.*?)\s+DATE DESCRIPTION AMOUNT",
-        normalized,
-        re.DOTALL | re.IGNORECASE
-    )
+    ]
 
-    if match:
-        block = match.group(1)
-        block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
-        block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
-        block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
-        block = re.sub(r"\s+DUE\b", "", block)
+    for pattern in patterns:
+        match = re.search(pattern, normalized, re.DOTALL | re.IGNORECASE)
+        if match:
+            block = match.group(1)
 
-        parts = re.split(r"\s{2,}|\n", block)
-        cleaned = "\n".join([p.strip() for p in parts if p.strip()])
-        return cleaned if cleaned else "Not found"
+            block = re.sub(r"DATE\s+\d{2}/\d{2}/\d{4}", "", block)
+            block = re.sub(r"DUE DATE\s+\d{2}/\d{2}/\d{4}", "", block)
+            block = re.sub(r"TERMS\s+Net\s+\d+", "", block)
+            block = re.sub(r"\s+DUE\b", "", block)
+
+            parts = re.split(r"\s{2,}|\n", block)
+            cleaned = "\n".join([p.strip() for p in parts if p.strip()])
+
+            return cleaned if cleaned else "Not found"
 
     return "Not found"
 
@@ -81,9 +84,7 @@ def get_client_short_name(bill_to):
 def format_invoice_month(invoice_date):
     date_match = re.search(r"(\d{2})/(\d{2})/(\d{4})", invoice_date)
     if date_match:
-        month = date_match.group(1)
-        year = date_match.group(3)
-        return f"{month}-{year}"
+        return f"{date_match.group(1)}-{date_match.group(3)}"
     return "unknown-date"
 
 
@@ -93,7 +94,23 @@ def build_output_filename(bill_to, invoice_date, invoice_number):
     return f"{client_name} {invoice_month} Invoice #{invoice_number}.pdf"
 
 
-def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, total, balance_due):
+def money_is_nonzero(value):
+    if value == "Not found":
+        return False
+    cleaned = value.replace("$", "").replace(",", "").strip()
+    try:
+        return float(cleaned) != 0
+    except ValueError:
+        return False
+
+
+def clean_balance_due(value):
+    if value == "Not found":
+        return value
+    return value.replace("$", "").strip()
+
+
+def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal, tax, total, balance_due):
     buffer = io.BytesIO()
 
     doc = SimpleDocTemplate(
@@ -113,7 +130,6 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
         fontName="Helvetica",
         fontSize=10,
         leading=13,
-        spaceAfter=0,
     )
 
     label_style = ParagraphStyle(
@@ -122,7 +138,6 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
         fontName="Helvetica-Bold",
         fontSize=10,
         leading=12,
-        textColor=colors.black,
     )
 
     value_style = ParagraphStyle(
@@ -131,7 +146,6 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
         fontName="Helvetica",
         fontSize=10,
         leading=12,
-        textColor=colors.black,
     )
 
     invoice_title_style = ParagraphStyle(
@@ -149,7 +163,6 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
         fontName="Helvetica-Bold",
         fontSize=10,
         leading=12,
-        spaceAfter=4,
     )
 
     bill_to_style = ParagraphStyle(
@@ -203,42 +216,29 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
 
     invoice_info_table = Table(
         [
-            [Paragraph("INVOICE", invoice_title_style)],
-            [Spacer(1, 0.08 * inch)],
-            [Table(
-                [
-                    [Paragraph("INVOICE #", label_style), Paragraph(str(invoice_number), value_style)],
-                    [Paragraph("DATE", label_style), Paragraph(invoice_date, value_style)],
-                    [Paragraph("DUE DATE", label_style), Paragraph(due_date, value_style)],
-                    [Paragraph("TERMS", label_style), Paragraph("Net 30", value_style)],
-                ],
-                colWidths=[1.0 * inch, 1.35 * inch],
-                style=TableStyle([
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                    ("TOPPADDING", (0, 0), (-1, -1), 1),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ])
-            )]
+            [Paragraph("INVOICE #", label_style), Paragraph(str(invoice_number), value_style)],
+            [Paragraph("DATE", label_style), Paragraph(invoice_date, value_style)],
+            [Paragraph("DUE DATE", label_style), Paragraph(due_date, value_style)],
+            [Paragraph("TERMS", label_style), Paragraph("Net 30", value_style)],
         ],
-        colWidths=[2.4 * inch],
+        colWidths=[1.0 * inch, 1.35 * inch],
         style=TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ])
     )
 
+    right_header = [
+        Paragraph("INVOICE", invoice_title_style),
+        Spacer(1, 14),
+        invoice_info_table,
+    ]
+
     header_table = Table(
-        [
-            [
-                company_block,
-                invoice_info_table,
-            ]
-        ],
+        [[company_block, right_header]],
         colWidths=[3.7 * inch, 2.7 * inch],
         style=TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -250,17 +250,15 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
     )
 
     story.append(header_table)
-    story.append(Spacer(1, 0.28 * inch))
+    story.append(Spacer(1, 0.22 * inch))
 
     bill_to_lines = [line.strip() for line in bill_to.split("\n") if line.strip()]
     if not bill_to_lines:
         bill_to_lines = ["Not found"]
 
-    bill_to_paragraphs = [Paragraph(line, bill_to_style) for line in bill_to_lines]
-
     bill_to_table = Table(
         [[Paragraph("BILL TO", section_label_style)]] +
-        [[line] for line in bill_to_paragraphs],
+        [[Paragraph(line, bill_to_style)] for line in bill_to_lines],
         colWidths=[3.25 * inch],
         style=TableStyle([
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -271,13 +269,20 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
     )
 
     story.append(bill_to_table)
-    story.append(Spacer(1, 0.45 * inch))
 
-    totals_rows = [
+    totals_rows = []
+
+    if money_is_nonzero(tax):
+        totals_rows.append([
+            Paragraph("SUBTOTAL", totals_label_style),
+            Paragraph(subtotal, totals_value_style),
+        ])
+
+    totals_rows.extend([
         [Paragraph("TAX", totals_label_style), Paragraph(tax, totals_value_style)],
         [Paragraph("TOTAL", totals_label_style), Paragraph(total, totals_value_style)],
-        [Paragraph("BALANCE DUE", totals_bold_style), Paragraph(f"${balance_due}", totals_bold_style)],
-    ]
+        [Paragraph("BALANCE DUE", totals_bold_style), Paragraph(f"${clean_balance_due(balance_due)}", totals_bold_style)],
+    ])
 
     totals_table = Table(
         totals_rows,
@@ -289,11 +294,11 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, tax, tota
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LINEABOVE", (0, 2), (-1, 2), 0.75, colors.black),
+            ("LINEABOVE", (0, len(totals_rows) - 1), (-1, len(totals_rows) - 1), 0.75, colors.black),
         ])
     )
 
-    story.append(Spacer(1, 2.2 * inch))
+    story.append(Spacer(1, 2.45 * inch))
     story.append(totals_table)
 
     doc.build(story)
@@ -321,15 +326,9 @@ if uploaded_files:
                     full_text += page_text + "\n"
 
         invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
-
-        invoice_date = find_value(
-            r"DUE DATE\s+\d{2}/\d{2}/\d{4}.*?\bDATE\s+(\d{2}/\d{2}/\d{4})",
-            full_text
-        )
-        if invoice_date == "Not found":
-            invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
-
+        invoice_date = find_value(r"DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
         due_date = find_value(r"DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
         tax = find_value(r"TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
         total = find_value(r"TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
         balance_due = find_value(r"BALANCE DUE\s+\$?([0-9,]+\.\d{2})", full_text)
@@ -340,6 +339,7 @@ if uploaded_files:
             invoice_date=invoice_date,
             due_date=due_date,
             bill_to=bill_to,
+            subtotal=subtotal,
             tax=tax,
             total=total,
             balance_due=balance_due
