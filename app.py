@@ -254,8 +254,8 @@ if uploaded_files:
                     full_text += page_text + "\n"
 
         invoice_number = find_value(r"INVOICE\s+#\s*([A-Za-z0-9\-]+)", full_text)
-        invoice_date = find_value(r"^DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
-        due_date = find_value(r"^DUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        invoice_date = find_value(r"\bDATE\s+(\d{2}/\d{2}/\d{4})", full_text)
+        due_date = find_value(r"\bDUE DATE\s+(\d{2}/\d{2}/\d{4})", full_text)
         subtotal = find_value(r"SUBTOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
         tax = find_value(r"^TAX\s+([\$]?[0-9,]+\.\d{2})", full_text)
         total = find_value(r"^TOTAL\s+([\$]?[0-9,]+\.\d{2})", full_text)
