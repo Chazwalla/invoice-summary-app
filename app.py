@@ -39,118 +39,118 @@ pine_logo = load_logo_base64()
 
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap');
 
-    .stApp {{
-        background:
-            radial-gradient(circle at 15% 70%, rgba(24, 60, 43, 0.10), transparent 28%),
-            radial-gradient(circle at 85% 75%, rgba(24, 60, 43, 0.09), transparent 30%),
-            linear-gradient(180deg, #fbfaf6 0%, #f4f6f1 100%);
-        font-family: 'Inter', sans-serif;
-    }}
+.stApp {{
+    background:
+        radial-gradient(circle at top left, rgba(24,60,43,0.08), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(24,60,43,0.07), transparent 24%),
+        linear-gradient(180deg, #f7f8f4 0%, #eef2eb 100%);
+    font-family: 'Inter', sans-serif;
+}}
 
-    .stApp::before {{
-        content: "♮ ♮ ♮";
-        position: fixed;
-        left: 5%;
-        bottom: 7%;
-        font-size: 9rem;
-        letter-spacing: 2.5rem;
-        color: rgba(24, 60, 43, 0.06);
-        transform: rotate(-2deg);
-        pointer-events: none;
-        z-index: 0;
-    }}
+.stApp::before {{
+    content: "";
+    position: fixed;
+    left: -80px;
+    bottom: -40px;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(24,60,43,0.10), transparent 68%);
+    pointer-events: none;
+    z-index: 0;
+}}
 
-    .stApp::after {{
-        content: "♮ ♮";
-        position: fixed;
-        right: 4%;
-        bottom: 10%;
-        font-size: 11rem;
-        letter-spacing: 2rem;
-        color: rgba(24, 60, 43, 0.055);
-        transform: rotate(2deg);
-        pointer-events: none;
-        z-index: 0;
-    }}
+.stApp::after {{
+    content: "";
+    position: fixed;
+    right: -120px;
+    bottom: -70px;
+    width: 520px;
+    height: 520px;
+    background: radial-gradient(circle, rgba(24,60,43,0.09), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}}
 
-    .main .block-container {{
-        max-width: 820px;
-        padding-top: 3.2rem;
-        position: relative;
-        z-index: 1;
-    }}
+.main .block-container {{
+    max-width: 820px;
+    padding-top: 2rem;
+    position: relative;
+    z-index: 1;
+}}
 
-    h1 {{
-        text-align: center;
-        font-family: 'Manrope', sans-serif !important;
-        font-size: 2.45rem !important;
-        font-weight: 800 !important;
-        color: #10251b;
-        margin-bottom: 0.35rem !important;
-        letter-spacing: -0.03em;
-    }}
+h1 {{
+    text-align: center;
+    font-family: 'Manrope', sans-serif !important;
+    font-size: 2.55rem !important;
+    font-weight: 800 !important;
+    color: #10251b;
+    margin-bottom: 0.35rem !important;
+    letter-spacing: -0.035em;
+}}
 
-    .app-logo {{
-        display: flex;
-        justify-content: center;
-        margin-bottom: 1rem;
-    }}
+.app-logo {{
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.9rem;
+}}
 
-    .app-logo img {{
-        width: 54px;
-        height: auto;
-        opacity: 0.96;
-    }}
+.app-logo img {{
+    width: 82px;
+    height: auto;
+    opacity: 0.92;
+}}
 
-    .app-subtitle {{
-        text-align: center;
-        color: #5f6b63;
-        font-size: 1rem;
-        margin-bottom: 2rem;
-    }}
+.app-subtitle {{
+    text-align: center;
+    color: #5f6b63;
+    font-size: 1.03rem;
+    margin-bottom: 2.1rem;
+}}
 
-    [data-testid="stFileUploader"] {{
-        background: rgba(255, 255, 255, 0.92);
-        border: 1px solid #e2e5df;
-        border-radius: 20px;
-        padding: 26px;
-        box-shadow: 0 16px 42px rgba(16, 37, 27, 0.10);
-        backdrop-filter: blur(6px);
-    }}
+[data-testid="stFileUploader"] {{
+    background: rgba(255,255,255,0.92);
+    border: 1px solid #e2e5df;
+    border-radius: 24px;
+    padding: 34px;
+    box-shadow: 0 18px 48px rgba(16, 37, 27, 0.10);
+    backdrop-filter: blur(12px);
+}}
 
-    [data-testid="stFileUploader"] section {{
-        border: 1.5px dashed rgba(24, 60, 43, 0.34);
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.65);
-    }}
+[data-testid="stFileUploaderDropzone"] {{
+    min-height: 140px;
+    border-radius: 18px;
+    border: 2px dashed rgba(24, 60, 43, 0.25);
+    background: rgba(255,255,255,0.45);
+}}
 
-    .stDownloadButton button {{
-        border-radius: 11px;
-        border: 1px solid #183c2b;
-        color: #183c2b;
-        background: rgba(255,255,255,0.92);
-        font-weight: 700;
-        padding: 0.55rem 1rem;
-    }}
+.stDownloadButton button {{
+    border-radius: 11px;
+    border: 1px solid #183c2b;
+    color: #183c2b;
+    background: rgba(255,255,255,0.94);
+    font-weight: 700;
+    padding: 0.55rem 1rem;
+}}
 
-    .stDownloadButton button:hover {{
-        background: #183c2b;
-        color: white;
-        border-color: #183c2b;
-    }}
+.stDownloadButton button:hover {{
+    background: #183c2b;
+    color: white;
+    border-color: #183c2b;
+}}
 
-    .ready-card {{
-        background: rgba(255,255,255,0.94);
-        border: 1px solid #e2e5df;
-        border-radius: 15px;
-        padding: 14px 16px;
-        margin: 14px 0 8px 0;
-        box-shadow: 0 6px 18px rgba(16, 37, 27, 0.06);
-        color: #10251b;
-        font-weight: 700;
-    }}
+.ready-card {{
+    background: rgba(255,255,255,0.82);
+    border: 1px solid rgba(24,60,43,0.08);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin: 16px 0 10px 0;
+    box-shadow: 0 10px 28px rgba(16,37,27,0.08);
+    color: #10251b;
+    font-weight: 700;
+    backdrop-filter: blur(12px);
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -379,7 +379,7 @@ if pine_logo:
 
 st.title("Invoice Summary Generator")
 st.markdown(
-    "<div class='app-subtitle'>Upload invoice PDFs to generate one-page summary invoices.</div>",
+    "<div class='app-subtitle'>Generate clean one-page summaries from vendor invoice PDFs.</div>",
     unsafe_allow_html=True
 )
 
