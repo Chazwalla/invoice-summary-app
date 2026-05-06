@@ -1,5 +1,6 @@
 import re
 import io
+import os
 import zipfile
 import streamlit as st
 import pdfplumber
@@ -16,6 +17,81 @@ from reportlab.platypus import (
     TableStyle,
     Image,
 )
+
+
+st.set_page_config(
+    page_title="Invoice Processor",
+    page_icon="📄",
+    layout="centered"
+)
+
+st.markdown("""
+<style>
+    .stApp {
+        background: #f7f7f3;
+    }
+
+    .main .block-container {
+        max-width: 820px;
+        padding-top: 3rem;
+    }
+
+    h1 {
+        text-align: center;
+        font-size: 2.4rem !important;
+        font-weight: 800 !important;
+        color: #10251b;
+        margin-bottom: 0.3rem !important;
+    }
+
+    .app-subtitle {
+        text-align: center;
+        color: #5f6b63;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .logo-mark {
+        text-align: center;
+        font-size: 2.6rem;
+        color: #183c2b;
+        margin-bottom: 0.5rem;
+    }
+
+    [data-testid="stFileUploader"] {
+        background: #ffffff;
+        border: 1px solid #e2e5df;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 10px 28px rgba(16, 37, 27, 0.08);
+    }
+
+    .stDownloadButton button {
+        border-radius: 10px;
+        border: 1px solid #183c2b;
+        color: #183c2b;
+        background: #ffffff;
+        font-weight: 600;
+    }
+
+    .stDownloadButton button:hover {
+        background: #183c2b;
+        color: white;
+        border-color: #183c2b;
+    }
+
+    .ready-card {
+        background: #ffffff;
+        border: 1px solid #e2e5df;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin: 12px 0;
+        box-shadow: 0 4px 14px rgba(16, 37, 27, 0.05);
+        color: #10251b;
+        font-weight: 600;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 
 CLIENT_NAME_MAP = {
@@ -234,12 +310,15 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
     return buffer.getvalue()
 
 
-st.title("Invoice Summary Tool")
+st.markdown("<div class='logo-mark'>♜</div>", unsafe_allow_html=True)
+st.title("Invoice Processor")
+st.markdown("<div class='app-subtitle'>Upload invoice PDFs to generate summary invoices.</div>", unsafe_allow_html=True)
 
 uploaded_files = st.file_uploader(
     "Upload invoice PDFs",
     type="pdf",
-    accept_multiple_files=True
+    accept_multiple_files=True,
+    label_visibility="collapsed"
 )
 
 if uploaded_files:
@@ -281,7 +360,7 @@ if uploaded_files:
 
         summary_files.append((output_name, pdf_bytes))
 
-        st.write(f"**Ready:** {output_name}")
+        st.markdown(f"<div class='ready-card'>Ready: {output_name}</div>", unsafe_allow_html=True)
 
         st.download_button(
             label=f"Download {output_name}",
