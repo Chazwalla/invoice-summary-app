@@ -338,10 +338,15 @@ def build_summary_pdf(invoice_number, invoice_date, due_date, bill_to, subtotal,
         ])
     ))
 
-    totals_rows = []
+    # No-tax invoices: tax shows as 0.00 and subtotal falls back to the total
+    if tax == "Not found":
+        tax = "0.00"
+    if subtotal == "Not found" and not money_is_nonzero(tax):
+        subtotal = total
 
-    if money_is_nonzero(tax):
-        totals_rows.append([Paragraph("SUBTOTAL", totals_label_style), Paragraph(subtotal, totals_value_style)])
+    totals_rows = [
+        [Paragraph("SUBTOTAL", totals_label_style), Paragraph(subtotal, totals_value_style)],
+    ]
 
     totals_rows.extend([
         [Paragraph("TAX", totals_label_style), Paragraph(tax, totals_value_style)],
